@@ -65,8 +65,7 @@ public class APIActivity extends Activity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-
-                new MakeRequestTask(mCredential).execute();
+                new MakeRequestThread(mCredential);
             }
         });
         mProgress = new ProgressDialog(this);
@@ -74,44 +73,95 @@ public class APIActivity extends Activity {
 
     }
 
-    /**
-     * An asynchronous task that handles the YouTube Data API call.
-     * Placing the API calls in their own task ensures the UI stays responsive.
-     */
-
-    private class MakeRequestTask extends AsyncTask<Void, Void, List<String>> {
+    private class MakeRequestThread implements Runnable {
         private com.google.api.services.youtube.YouTube mService = null;
         private Exception mLastError = null;
 
-        MakeRequestTask(GoogleAccountCredential credential) {
+        MakeRequestThread(GoogleAccountCredential credential) {
             HttpTransport transport = AndroidHttp.newCompatibleTransport();
             JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
             mService = new com.google.api.services.youtube.YouTube.Builder(
                     transport, jsonFactory, credential)
                     .setApplicationName("YouTube Data API Android Quickstart")
                     .build();
+            new Thread(this, "MakeRequest").start();
         }
 
-        /**
-         * Background task to call YouTube Data API.
-         * @param params no parameters needed for this task.
-         */
+
         @Override
-        protected List<String> doInBackground(Void... params) {
+        public void run() {
+            preExecute();
+            List<String> output = null;
             try {
-                return getDataFromApi();
+                output = getDataFromApi();
             } catch (Exception e) {
                 mLastError = e;
-                cancel(true);
-                return null;
+                canceled();
             }
+            postExecute(output);
+        }
+
+        private void preExecute() {
+
+            APIActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mOutputText.setText("");
+                    mProgress.show();
+                }
+            });
+        }
+
+        private void postExecute(List<String> output) {
+            if (output == null) {
+                return;
+            }
+
+            APIActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mProgress.hide();
+                    if (output == null || output.size() == 0) {
+                        mOutputText.setText("No results returned.");
+                    } else {
+                        output.add(0, "Data retrieved using the YouTube Data API:");
+                        mOutputText.setText(TextUtils.join("\n", output));
+                    }
+                }
+            });
+        }
+
+        private void canceled() {
+
+            APIActivity.this.runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    mProgress.hide();
+                    if (mLastError != null) {
+                        if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
+                            showGooglePlayServicesAvailabilityErrorDialog(
+                                    ((GooglePlayServicesAvailabilityIOException) mLastError)
+                                            .getConnectionStatusCode());
+                        } else if (mLastError instanceof UserRecoverableAuthIOException) {
+                            startActivityForResult(
+                                    ((UserRecoverableAuthIOException) mLastError).getIntent(),
+                                    MainActivity.REQUEST_AUTHORIZATION);
+                        } else {
+                            mOutputText.setText("The following error occurred:\n"
+                                    + mLastError.getMessage());
+                        }
+                    } else {
+                        mOutputText.setText("Request cancelled.");
+                    }
+                }
+            });
         }
 
         /**
-         * Fetch information about the "GoogleDevelopers" YouTube channel.
-         * @return List of Strings containing information about the channel.
-         * @throws IOException
-         */
+          * Fetch information about the "GoogleDevelopers" YouTube channel.
+          * @return List of Strings containing information about the channel.
+          * @throws IOException
+          */
         private List<String> getDataFromApi() throws IOException {
             // Get a list of up to 10 files.
             List<String> channelInfo = new ArrayList<String>();
@@ -128,59 +178,21 @@ public class APIActivity extends Activity {
             return channelInfo;
         }
 
-        @Override
-        protected void onPreExecute() {
-            mOutputText.setText("");
-            mProgress.show();
+        /**
+          * Display an error dialog showing that Google Play Services is missing
+          * or out of date.
+          * @param connectionStatusCode code describing the presence (or lack of)
+          *     Google Play Services on this device.
+          */
+        void showGooglePlayServicesAvailabilityErrorDialog(
+                final int connectionStatusCode) {
+            GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
+            Dialog dialog = apiAvailability.getErrorDialog(
+                    APIActivity.this,
+                    connectionStatusCode,
+                    REQUEST_GOOGLE_PLAY_SERVICES);
+            dialog.show();
         }
 
-        @Override
-        protected void onPostExecute(List<String> output) {
-            mProgress.hide();
-            if (output == null || output.size() == 0) {
-                mOutputText.setText("No results returned.");
-            } else {
-                output.add(0, "Data retrieved using the YouTube Data API:");
-                mOutputText.setText(TextUtils.join("\n", output));
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            mProgress.hide();
-            if (mLastError != null) {
-                if (mLastError instanceof GooglePlayServicesAvailabilityIOException) {
-                    showGooglePlayServicesAvailabilityErrorDialog(
-                            ((GooglePlayServicesAvailabilityIOException) mLastError)
-                                    .getConnectionStatusCode());
-                } else if (mLastError instanceof UserRecoverableAuthIOException) {
-                    startActivityForResult(
-                            ((UserRecoverableAuthIOException) mLastError).getIntent(),
-                            MainActivity.REQUEST_AUTHORIZATION);
-                } else {
-                    mOutputText.setText("The following error occurred:\n"
-                            + mLastError.getMessage());
-                }
-            } else {
-                mOutputText.setText("Request cancelled.");
-            }
-        }
     }
-
-    /**
-     * Display an error dialog showing that Google Play Services is missing
-     * or out of date.
-     * @param connectionStatusCode code describing the presence (or lack of)
-     *     Google Play Services on this device.
-     */
-    void showGooglePlayServicesAvailabilityErrorDialog(
-            final int connectionStatusCode) {
-        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
-        Dialog dialog = apiAvailability.getErrorDialog(
-                APIActivity.this,
-                connectionStatusCode,
-                REQUEST_GOOGLE_PLAY_SERVICES);
-        dialog.show();
-    }
-
 }
