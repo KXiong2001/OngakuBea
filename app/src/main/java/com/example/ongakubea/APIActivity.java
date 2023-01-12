@@ -145,7 +145,7 @@ public class APIActivity extends Activity {
                         } else if (mLastError instanceof UserRecoverableAuthIOException) {
                             startActivityForResult(
                                     ((UserRecoverableAuthIOException) mLastError).getIntent(),
-                                    MainActivity.REQUEST_AUTHORIZATION);
+                                    LoginActivity.REQUEST_AUTHORIZATION);
                         } else {
                             mOutputText.setText("The following error occurred:\n"
                                     + mLastError.getMessage());

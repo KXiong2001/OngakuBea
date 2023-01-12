@@ -33,6 +33,11 @@
         <activity
             android:name=".APIActivity"
             android:screenOrientation="fullSensor" />
+
+        <activity
+            android:name=".LoginActivity"
+            android:noHistory="true" />
+
     </application>
 
 </manifest>
