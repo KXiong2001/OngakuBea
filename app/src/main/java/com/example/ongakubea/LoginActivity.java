@@ -24,8 +24,10 @@ import android.text.method.ScrollingMovementMethod;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import java.util.Arrays;
 import java.util.List;
@@ -36,9 +38,7 @@ import pub.devrel.easypermissions.EasyPermissions;
 public class LoginActivity extends Activity
         implements EasyPermissions.PermissionCallbacks {
     GoogleAccountCredential mCredential;
-    private TextView mOutputText;
-    private Button mCallApiButton;
-    private Button nextPageButton;
+    private ImageButton mGoogleLoginButton;
     ProgressDialog mProgress;
 
     static final int REQUEST_ACCOUNT_PICKER = 1000;
@@ -46,7 +46,6 @@ public class LoginActivity extends Activity
     static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
     static final int REQUEST_PERMISSION_GET_ACCOUNTS = 1003;
 
-    private static final String BUTTON_TEXT = "Call YouTube Data API";
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String[] SCOPES = { YouTubeScopes.YOUTUBE_READONLY };
 
@@ -57,60 +56,76 @@ public class LoginActivity extends Activity
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        LinearLayout activityLayout = new LinearLayout(this);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.MATCH_PARENT);
-        activityLayout.setLayoutParams(lp);
-        activityLayout.setOrientation(LinearLayout.VERTICAL);
-        activityLayout.setPadding(16, 16, 16, 16);
+        setContentView(R.layout.activity_login);
 
-        ViewGroup.LayoutParams tlp = new ViewGroup.LayoutParams(
-                ViewGroup.LayoutParams.WRAP_CONTENT,
-                ViewGroup.LayoutParams.WRAP_CONTENT);
-
-        mCallApiButton = new Button(this);
-        mCallApiButton.setText(BUTTON_TEXT);
-        mCallApiButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                mCallApiButton.setEnabled(false);
-                mOutputText.setText("");
-                getResultsFromApi();
-                mCallApiButton.setEnabled(true);
-            }
-        });
-        activityLayout.addView(mCallApiButton);
-
-        mOutputText = new TextView(this);
-        mOutputText.setLayoutParams(tlp);
-        mOutputText.setPadding(16, 16, 16, 16);
-        mOutputText.setVerticalScrollBarEnabled(true);
-        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-        mOutputText.setText(
-                "Click the \'" + BUTTON_TEXT +"\' button to test the API.");
-        activityLayout.addView(mOutputText);
-
-        mProgress = new ProgressDialog(this);
-        mProgress.setMessage("Calling YouTube Data API ...");
-
-        nextPageButton = new Button(this);
-        nextPageButton.setText("Next Page");
-        nextPageButton.setOnClickListener(new View.OnClickListener() {
+        mGoogleLoginButton = findViewById(R.id.GoogleLoginButton);
+        mGoogleLoginButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent intent = new Intent(LoginActivity.this, APIActivity.class);
-                startActivity(intent);
+                mGoogleLoginButton.setEnabled(false);
+                getResultsFromApi();
+                mGoogleLoginButton.setEnabled(true);
             }
         });
-        activityLayout.addView(nextPageButton);
 
-        setContentView(activityLayout);
+        mProgress = new ProgressDialog(this);
+        mProgress.setMessage("Connecting to Google Account ...");
 
         // Initialize credentials and service object.
         mCredential = GoogleAccountCredential.usingOAuth2(
                         getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
+
+//        LinearLayout activityLayout = new LinearLayout(this);
+//        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
+//                LinearLayout.LayoutParams.MATCH_PARENT,
+//                LinearLayout.LayoutParams.MATCH_PARENT);
+//        activityLayout.setLayoutParams(lp);
+//        activityLayout.setOrientation(LinearLayout.VERTICAL);
+//        activityLayout.setPadding(16, 16, 16, 16);
+//
+//        ViewGroup.LayoutParams tlp = new ViewGroup.LayoutParams(
+//                ViewGroup.LayoutParams.WRAP_CONTENT,
+//                ViewGroup.LayoutParams.WRAP_CONTENT);
+//
+//        mCallApiButton = new Button(this);
+//        mCallApiButton.setText(BUTTON_TEXT);
+//        mCallApiButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View v) {
+//                mCallApiButton.setEnabled(false);
+//                mOutputText.setText("");
+//                getResultsFromApi();
+//                mCallApiButton.setEnabled(true);
+//            }
+//        });
+//        activityLayout.addView(mCallApiButton);
+//
+//        mOutputText = new TextView(this);
+//        mOutputText.setLayoutParams(tlp);
+//        mOutputText.setPadding(16, 16, 16, 16);
+//        mOutputText.setVerticalScrollBarEnabled(true);
+//        mOutputText.setMovementMethod(new ScrollingMovementMethod());
+//        mOutputText.setText(
+//                "Click the \'" + BUTTON_TEXT +"\' button to test the API.");
+//        activityLayout.addView(mOutputText);
+//
+//        mProgress = new ProgressDialog(this);
+//        mProgress.setMessage("Calling YouTube Data API ...");
+//
+//        nextPageButton = new Button(this);
+//        nextPageButton.setText("Next Page");
+//        nextPageButton.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Intent intent = new Intent(LoginActivity.this, APIActivity.class);
+//                startActivity(intent);
+//            }
+//        });
+//        activityLayout.addView(nextPageButton);
+//
+//        setContentView(activityLayout);
+
     }
 
 
@@ -123,12 +138,13 @@ public class LoginActivity extends Activity
      * appropriate.
      */
     private void getResultsFromApi() {
+        System.out.println(getSharedPreferences("p1", Context.MODE_PRIVATE).getAll());
         if (! isGooglePlayServicesAvailable()) {
             acquireGooglePlayServices();
         } else if (mCredential.getSelectedAccountName() == null) {
             chooseAccount();
         } else if (! isDeviceOnline()) {
-            mOutputText.setText("No network connection available.");
+            Toast.makeText(this, "No network connection available.", Toast.LENGTH_LONG).show();
         } else {
             System.out.println("Already logged in ... ");
             System.out.println("Account name: " + mCredential.getSelectedAccountName());
@@ -152,6 +168,7 @@ public class LoginActivity extends Activity
                 this, Manifest.permission.GET_ACCOUNTS)) {
             String accountName = getPreferences(Context.MODE_PRIVATE)
                     .getString(PREF_ACCOUNT_NAME, null);
+            System.out.println("accountName = " + accountName);
             if (accountName != null) {
                 mCredential.setSelectedAccountName(accountName);
                 getResultsFromApi();
@@ -188,9 +205,8 @@ public class LoginActivity extends Activity
         switch(requestCode) {
             case REQUEST_GOOGLE_PLAY_SERVICES:
                 if (resultCode != RESULT_OK) {
-                    mOutputText.setText(
-                            "This app requires Google Play Services. Please install " +
-                                    "Google Play Services on your device and relaunch this app.");
+                    Toast.makeText(this, "This app requires Google Play Services. Please install " +
+                            "Google Play Services on your device and relaunch this app.", Toast.LENGTH_SHORT).show();
                 } else {
                     getResultsFromApi();
                 }
