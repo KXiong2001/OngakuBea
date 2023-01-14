@@ -4,14 +4,12 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.app.ProgressDialog;
 import android.content.Context;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.View;
 import android.widget.Button;
 import android.widget.TextView;
 
-import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
 
 import com.google.android.gms.common.GoogleApiAvailability;
@@ -24,8 +22,7 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.youtube.YouTubeScopes;
-import com.google.api.services.youtube.model.Channel;
-import com.google.api.services.youtube.model.ChannelListResponse;
+import com.google.api.services.youtube.model.Playlist;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -162,17 +159,14 @@ public class APIActivity extends Activity {
           * @throws IOException
           */
         private List<String> getDataFromApi() throws IOException {
-            // Get a list of up to 10 files.
+            List<Playlist> pls = mService.playlists()
+                    .list("snippet,contentDetails")
+                    .setMine(true)
+                    .execute()
+                    .getItems();
             List<String> channelInfo = new ArrayList<String>();
-            ChannelListResponse result = mService.channels().list("snippet,contentDetails,statistics")
-                    .setForUsername("GoogleDevelopers")
-                    .execute();
-            List<Channel> channels = result.getItems();
-            if (channels != null) {
-                Channel channel = channels.get(0);
-                channelInfo.add("This channel's ID is " + channel.getId() + ". " +
-                        "Its title is '" + channel.getSnippet().getTitle() + ", " +
-                        "and it has " + channel.getStatistics().getViewCount() + " views.");
+            for (Playlist pl : pls) {
+                System.out.println(pl.toString());
             }
             return channelInfo;
         }

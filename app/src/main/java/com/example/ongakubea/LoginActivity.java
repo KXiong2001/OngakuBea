@@ -20,17 +20,14 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Bundle;
 import androidx.annotation.NonNull;
-import android.text.method.ScrollingMovementMethod;
+
 import android.view.View;
-import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageButton;
-import android.widget.LinearLayout;
-import android.widget.TextView;
 import android.widget.Toast;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
@@ -63,7 +60,9 @@ public class LoginActivity extends Activity
             @Override
             public void onClick(View view) {
                 mGoogleLoginButton.setEnabled(false);
-                getResultsFromApi();
+                connectGoogleAccount();
+                Intent intent = new Intent(LoginActivity.this, APIActivity.class);
+                startActivity(intent);
                 mGoogleLoginButton.setEnabled(true);
             }
         });
@@ -75,57 +74,6 @@ public class LoginActivity extends Activity
         mCredential = GoogleAccountCredential.usingOAuth2(
                         getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
-
-//        LinearLayout activityLayout = new LinearLayout(this);
-//        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-//                LinearLayout.LayoutParams.MATCH_PARENT,
-//                LinearLayout.LayoutParams.MATCH_PARENT);
-//        activityLayout.setLayoutParams(lp);
-//        activityLayout.setOrientation(LinearLayout.VERTICAL);
-//        activityLayout.setPadding(16, 16, 16, 16);
-//
-//        ViewGroup.LayoutParams tlp = new ViewGroup.LayoutParams(
-//                ViewGroup.LayoutParams.WRAP_CONTENT,
-//                ViewGroup.LayoutParams.WRAP_CONTENT);
-//
-//        mCallApiButton = new Button(this);
-//        mCallApiButton.setText(BUTTON_TEXT);
-//        mCallApiButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View v) {
-//                mCallApiButton.setEnabled(false);
-//                mOutputText.setText("");
-//                getResultsFromApi();
-//                mCallApiButton.setEnabled(true);
-//            }
-//        });
-//        activityLayout.addView(mCallApiButton);
-//
-//        mOutputText = new TextView(this);
-//        mOutputText.setLayoutParams(tlp);
-//        mOutputText.setPadding(16, 16, 16, 16);
-//        mOutputText.setVerticalScrollBarEnabled(true);
-//        mOutputText.setMovementMethod(new ScrollingMovementMethod());
-//        mOutputText.setText(
-//                "Click the \'" + BUTTON_TEXT +"\' button to test the API.");
-//        activityLayout.addView(mOutputText);
-//
-//        mProgress = new ProgressDialog(this);
-//        mProgress.setMessage("Calling YouTube Data API ...");
-//
-//        nextPageButton = new Button(this);
-//        nextPageButton.setText("Next Page");
-//        nextPageButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                Intent intent = new Intent(LoginActivity.this, APIActivity.class);
-//                startActivity(intent);
-//            }
-//        });
-//        activityLayout.addView(nextPageButton);
-//
-//        setContentView(activityLayout);
-
     }
 
 
@@ -137,8 +85,14 @@ public class LoginActivity extends Activity
      * of the preconditions are not satisfied, the app will prompt the user as
      * appropriate.
      */
-    private void getResultsFromApi() {
-        System.out.println(getSharedPreferences("p1", Context.MODE_PRIVATE).getAll());
+    private void connectGoogleAccount() {
+        String accountName = getSharedPreferences("p1", Context.MODE_PRIVATE)
+                .getString(PREF_ACCOUNT_NAME, null);
+        if (accountName != null) {
+            mCredential.setSelectedAccountName(accountName);
+            return;
+        }
+
         if (! isGooglePlayServicesAvailable()) {
             acquireGooglePlayServices();
         } else if (mCredential.getSelectedAccountName() == null) {
@@ -171,7 +125,7 @@ public class LoginActivity extends Activity
             System.out.println("accountName = " + accountName);
             if (accountName != null) {
                 mCredential.setSelectedAccountName(accountName);
-                getResultsFromApi();
+                connectGoogleAccount();
             } else {
                 // Start a dialog from which the user can choose an account
                 startActivityForResult(
@@ -208,7 +162,7 @@ public class LoginActivity extends Activity
                     Toast.makeText(this, "This app requires Google Play Services. Please install " +
                             "Google Play Services on your device and relaunch this app.", Toast.LENGTH_SHORT).show();
                 } else {
-                    getResultsFromApi();
+                    connectGoogleAccount();
                 }
                 break;
             case REQUEST_ACCOUNT_PICKER:
@@ -223,13 +177,13 @@ public class LoginActivity extends Activity
                         editor.putString(PREF_ACCOUNT_NAME, accountName);
                         editor.apply();
                         mCredential.setSelectedAccountName(accountName);
-                        getResultsFromApi();
+                        connectGoogleAccount();
                     }
                 }
                 break;
             case REQUEST_AUTHORIZATION:
                 if (resultCode == RESULT_OK) {
-                    getResultsFromApi();
+                    connectGoogleAccount();
                 }
                 break;
         }
