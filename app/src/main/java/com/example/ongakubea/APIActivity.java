@@ -102,7 +102,6 @@ public class APIActivity extends Activity {
         }
 
         private void preExecute() {
-
             APIActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {

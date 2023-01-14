@@ -133,7 +133,6 @@ public class LoginActivity extends Activity
             System.out.println("Already logged in ... ");
             System.out.println("Account name: " + mCredential.getSelectedAccountName());
             System.out.println(getSharedPreferences("p1", Context.MODE_PRIVATE).getAll());
-            // new MakeRequestTask(mCredential).execute();
         }
     }
 
