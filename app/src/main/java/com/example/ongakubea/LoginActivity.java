@@ -61,9 +61,8 @@ public class LoginActivity extends Activity
             public void onClick(View view) {
                 mGoogleLoginButton.setEnabled(false);
                 connectGoogleAccount();
-                Intent intent = new Intent(LoginActivity.this, APIActivity.class);
-                startActivity(intent);
                 mGoogleLoginButton.setEnabled(true);
+                System.out.println("Finish login");
             }
         });
 
@@ -122,7 +121,7 @@ public class LoginActivity extends Activity
                 this, Manifest.permission.GET_ACCOUNTS)) {
             String accountName = getPreferences(Context.MODE_PRIVATE)
                     .getString(PREF_ACCOUNT_NAME, null);
-            System.out.println("accountName = " + accountName);
+
             if (accountName != null) {
                 mCredential.setSelectedAccountName(accountName);
                 connectGoogleAccount();
@@ -178,6 +177,10 @@ public class LoginActivity extends Activity
                         editor.apply();
                         mCredential.setSelectedAccountName(accountName);
                         connectGoogleAccount();
+
+                        Intent intent = new Intent(LoginActivity.this, PlaylistActvity.class);
+                        startActivity(intent);
+                        finish();
                     }
                 }
                 break;
