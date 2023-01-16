@@ -4,6 +4,8 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -42,7 +44,7 @@ public class PlaylistAdapter extends
         TextView playlistName = holder.playlistName;
         playlistName.setText(playlist.getSnippet().getTitle());
         TextView playlistItems = holder.numVideos;
-        playlistItems.setText(String.format("%d", playlist.getContentDetails().getItemCount()));
+        playlistItems.setText(String.format("Videos: %d", playlist.getContentDetails().getItemCount()));
 
 
         ImageView snippitThumbnail = holder.thumbnail;
@@ -55,6 +57,15 @@ public class PlaylistAdapter extends
             .fitCenter()
             .placeholder(R.drawable.ic_launcher_foreground)
             .into(snippitThumbnail);
+
+
+        holder.functionButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                System.out.println("Function button clicked!");
+                System.out.println(String.format("%s", playlist.getSnippet().getTitle()));
+            }
+        });
     }
 
     @Override
@@ -66,12 +77,14 @@ public class PlaylistAdapter extends
         TextView playlistName;
         TextView numVideos;
         ImageView thumbnail;
+        ImageButton functionButton;
 
         public ViewHolder(@NonNull View itemView) {
             super(itemView);
             playlistName = itemView.findViewById(R.id.playlistName);
             numVideos = itemView.findViewById(R.id.playlistNumItems);
             thumbnail = itemView.findViewById(R.id.playlistThumbnail);
+            functionButton = itemView.findViewById(R.id.playlistFunctionButton);
         }
     }
 }
