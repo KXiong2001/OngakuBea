@@ -3,6 +3,7 @@ package com.example.ongakubea;
 import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -18,29 +19,42 @@ import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.youtube.YouTubeScopes;
-import com.google.api.services.youtube.model.Playlist;
 import com.google.api.services.youtube.model.PlaylistItem;
 import com.google.api.services.youtube.model.Video;
 
-import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-public class PlaylistActvity extends Activity {
+public class VideoListActivity extends Activity {
     private static final String[] SCOPES = { YouTubeScopes.YOUTUBE_READONLY };
     private static final String PREF_ACCOUNT_NAME = "accountName";
 
-    RecyclerView playlistView;
+    private String playlistId;
+    private List<Video> musicVideos;
+    RecyclerView musicVideosList;
+
+    public static void start(Context context, String playlistId) {
+        Intent intent = new Intent(context, VideoListActivity.class);
+        intent.putExtra("playlistId", playlistId);
+        context.startActivity(intent);
+    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_playlist);
-        playlistView = findViewById(R.id.playlistRows);
-        fetchPlaylists();
+        setContentView(R.layout.activity_playlist_list);
+
+        Intent intent = this.getIntent();
+        String playlistId = intent.getStringExtra("playlistId");
+        this.playlistId = playlistId;
+        this.musicVideos = new ArrayList<>();
+        this.musicVideosList = findViewById(R.id.videosRecyclerView);
+
+        showMusicVideos();
     }
 
-    private List<Playlist> fetchPlaylists() {
+    private void showMusicVideos() {
         GoogleAccountCredential mCredential = GoogleAccountCredential.usingOAuth2(
                         getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
@@ -48,48 +62,85 @@ public class PlaylistActvity extends Activity {
         String accountName = getSharedPreferences("p1", Context.MODE_PRIVATE)
                 .getString(PREF_ACCOUNT_NAME, null);
         if (accountName == null) {
-            return null;
+            return;
         }
 
         mCredential.setSelectedAccountName(accountName);
 
-        new ListPlaylists(mCredential);
-        return null;
+        new GetPlaylistItemDetails(mCredential);
     }
 
-    private class ListPlaylists implements Runnable {
+    private class GetPlaylistItemDetails implements Runnable {
         private com.google.api.services.youtube.YouTube mService = null;
         static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
         private Exception mLastError = null;
 
-        ListPlaylists(GoogleAccountCredential credential) {
+        GetPlaylistItemDetails(GoogleAccountCredential credential) {
             HttpTransport transport = AndroidHttp.newCompatibleTransport();
             JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
             mService = new com.google.api.services.youtube.YouTube.Builder(
                     transport, jsonFactory, credential)
                     .setApplicationName("YouTube Data API Android Quickstart")
                     .build();
-            new Thread(this, "MakeRequest").start();
-        }
 
+
+            new Thread(this, "getPlaylistDetails").start();
+        }
 
         @Override
         public void run() {
-            List<Playlist> output = null;
             try {
-                output = getPlaylists();
+                List<PlaylistItem> playlistItems = mService.playlistItems()
+                        .list("contentDetails")
+                        .setPlaylistId(playlistId)
+                        .setMaxResults(50L)
+                        .execute()
+                        .getItems();
+
+                System.out.println("Playlist items:" + playlistItems.toString());
+
+                String allVideoIds = "";
+                for (PlaylistItem pli : playlistItems) {
+                    String videoId = pli.getContentDetails().getVideoId();
+                    allVideoIds += videoId + ",";
+                }
+                allVideoIds = allVideoIds.substring(0, allVideoIds.length() - 2);
+                System.out.println(allVideoIds);
+
+                List<Video> videos = mService.videos()
+                        .list("snippet,contentDetails")
+                        .setId(allVideoIds)
+                        .execute()
+                        .getItems();
+
+                System.out.println("Videos: " + videos.toString());
+
+                for (Video video : videos) {
+                    String videoCategory = video.getSnippet().getCategoryId();
+                    if (videoCategory.equals("10")) {
+                        System.out.println("Is a music video!");
+                        musicVideos.add(video);
+                    } else {
+                        System.out.println(String.format("%s is not a music video. Category: %s",
+                                video.getSnippet().getTitle(), videoCategory));
+                    }
+                }
+
+
             } catch (Exception e) {
                 mLastError = e;
+                System.out.println(e.getMessage());
                 canceled();
             }
 
-            List<Playlist> finalOutput = output;
-            PlaylistActvity.this.runOnUiThread(new Runnable() {
+
+            VideoListActivity.this.runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    PlaylistAdapter playlistAdapter = new PlaylistAdapter(finalOutput);
-                    playlistView.setAdapter(playlistAdapter);
-                    playlistView.setLayoutManager(new LinearLayoutManager(PlaylistActvity.this));
+                    System.out.println("1111111" + musicVideos);
+                    VideoListAdapter playlistAdapter = new VideoListAdapter(musicVideos);
+                    musicVideosList.setAdapter(playlistAdapter);
+                    musicVideosList.setLayoutManager(new LinearLayoutManager(VideoListActivity.this));
                 }
             });
         }
@@ -114,25 +165,6 @@ public class PlaylistActvity extends Activity {
             }
         }
 
-        /**
-         * Fetch information about the "GoogleDevelopers" YouTube channel.
-         * @return List of Strings containing information about the channel.
-         * @throws IOException
-         */
-        private List<Playlist> getPlaylists() throws IOException {
-            List<Playlist> pls = mService.playlists()
-                    .list("snippet,contentDetails")
-                    .setMine(true)
-                    .execute()
-                    .getItems();
-            for (Playlist pl : pls) {
-                System.out.println(pl.toString());
-                String plstId = pl.getId();
-                System.out.println(plstId);
-                break;
-            }
-            return pls;
-        }
 
         /**
          * Display an error dialog showing that Google Play Services is missing
@@ -144,7 +176,7 @@ public class PlaylistActvity extends Activity {
                 final int connectionStatusCode) {
             GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
             Dialog dialog = apiAvailability.getErrorDialog(
-                    PlaylistActvity.this,
+                    VideoListActivity.this,
                     connectionStatusCode,
                     REQUEST_GOOGLE_PLAY_SERVICES);
             dialog.show();

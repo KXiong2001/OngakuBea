@@ -4,7 +4,6 @@ import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -20,6 +19,7 @@ import java.util.List;
 public class PlaylistAdapter extends
         RecyclerView.Adapter<PlaylistAdapter.ViewHolder> {
 
+    private Context context;
     private List<Playlist> mPlaylists;
 
     public PlaylistAdapter(List<Playlist> playlists) {
@@ -29,7 +29,7 @@ public class PlaylistAdapter extends
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-        Context context = parent.getContext();
+        context = parent.getContext();
         LayoutInflater layoutInflater = LayoutInflater.from(context);
 
         View playlistRowView = layoutInflater.inflate(R.layout.playlist_row_layout, parent, false);
@@ -58,14 +58,13 @@ public class PlaylistAdapter extends
             .placeholder(R.drawable.ic_launcher_foreground)
             .into(snippitThumbnail);
 
-
         holder.functionButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                System.out.println("Function button clicked!");
-                System.out.println(String.format("%s", playlist.getSnippet().getTitle()));
+                VideoListActivity.start(context, playlist.getId());
             }
         });
+
     }
 
     @Override
