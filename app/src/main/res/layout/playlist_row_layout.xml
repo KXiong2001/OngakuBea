@@ -42,7 +42,7 @@
         android:layout_height="wrap_content"
         android:padding="5dp"
         android:layout_alignParentEnd="true"
-        android:src="@drawable/baseline_more_vert_24"
+        android:src="@drawable/baseline_navigate_next_24"
         android:background="@null"/>
 
 </RelativeLayout>

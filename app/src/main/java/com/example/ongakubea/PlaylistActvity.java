@@ -19,8 +19,6 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.youtube.YouTubeScopes;
 import com.google.api.services.youtube.model.Playlist;
-import com.google.api.services.youtube.model.PlaylistItem;
-import com.google.api.services.youtube.model.Video;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -35,7 +33,7 @@ public class PlaylistActvity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_playlist);
+        setContentView(R.layout.activity_playlist_list);
         playlistView = findViewById(R.id.playlistRows);
         fetchPlaylists();
     }
@@ -125,12 +123,6 @@ public class PlaylistActvity extends Activity {
                     .setMine(true)
                     .execute()
                     .getItems();
-            for (Playlist pl : pls) {
-                System.out.println(pl.toString());
-                String plstId = pl.getId();
-                System.out.println(plstId);
-                break;
-            }
             return pls;
         }
 
