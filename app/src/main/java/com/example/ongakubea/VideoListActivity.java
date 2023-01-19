@@ -23,6 +23,7 @@ import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
 import com.google.api.services.youtube.YouTubeScopes;
 import com.google.api.services.youtube.model.PlaylistItem;
+import com.google.api.services.youtube.model.SearchResult;
 import com.google.api.services.youtube.model.Video;
 
 import java.io.IOException;
@@ -215,17 +216,39 @@ public class VideoListActivity extends Activity {
         private Exception mLastError = null;
 
         GetRecommendations() {
-            new Thread(this, "getPlaylistDetails").start();
+            new Thread(this, "getRecommendations").start();
         }
 
         @Override
         public void run() {
             try {
                 System.out.println("Suggestion button clicked");
+                getRecommendedMusicVideos();
             } catch (Exception e) {
                 mLastError = e;
                 System.out.println(e.getMessage());
                 canceled();
+            }
+        }
+
+        private void getRecommendedMusicVideos() throws IOException {
+            List<Video> musicVideos = VideoListActivity.this.musicVideos;
+            if (musicVideos == null || musicVideos.size() == 0) {
+                System.out.println("getRecommendedMusicVideos: No Music videos exist in playlist.");
+                return;
+            }
+
+            String videoId = musicVideos.get(0).getId();
+
+            List<SearchResult> results = mService.search()
+                    .list("snippet")
+                    .setRelatedToVideoId(videoId)
+                    .setType("video")
+                    .setMaxResults(50L)
+                    .execute().getItems();
+
+            for (SearchResult result : results) {
+                System.out.println(result.getSnippet().toString());
             }
         }
 

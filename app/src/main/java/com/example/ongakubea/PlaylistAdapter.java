@@ -49,7 +49,6 @@ public class PlaylistAdapter extends
 
         ImageView snippitThumbnail = holder.thumbnail;
         String url = playlist.getSnippet().getThumbnails().getDefault().getUrl();
-        System.out.println(url);
 
         Glide
             .with(holder.itemView.getContext())
