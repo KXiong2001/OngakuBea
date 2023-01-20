@@ -1,12 +1,12 @@
-package com.example.ongakubea;
+package com.example.ongakubea.activities;
 
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.CountDownTimer;
-import android.view.View;
-import android.widget.Button;
+
+import com.example.ongakubea.R;
 
 public class MainActivity extends Activity {
 

@@ -1,4 +1,4 @@
-package com.example.ongakubea;
+package com.example.ongakubea.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -12,6 +12,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.ongakubea.activities.VideoListActivity;
+import com.example.ongakubea.R;
 import com.google.api.services.youtube.model.Playlist;
 
 import java.util.List;

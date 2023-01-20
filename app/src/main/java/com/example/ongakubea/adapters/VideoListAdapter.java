@@ -1,4 +1,4 @@
-package com.example.ongakubea;
+package com.example.ongakubea.adapters;
 
 import android.content.Context;
 import android.view.LayoutInflater;
@@ -9,17 +9,18 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.example.ongakubea.R;
 import com.google.api.services.youtube.model.Video;
 
 
 import java.util.List;
 
 public class VideoListAdapter extends
-        RecyclerView.Adapter<VideoListAdapter.ViewHolder> {
+    RecyclerView.Adapter<VideoListAdapter.ViewHolder> {
     Context context;
     List<Video> mVideos;
 
-    VideoListAdapter(List<Video> videos) {
+    public VideoListAdapter(List<Video> videos) {
         this.mVideos = videos;
     }
 

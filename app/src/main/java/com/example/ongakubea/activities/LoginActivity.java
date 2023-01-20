@@ -1,5 +1,6 @@
-package com.example.ongakubea;
+package com.example.ongakubea.activities;
 
+import com.example.ongakubea.R;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
@@ -27,7 +28,6 @@ import android.widget.Toast;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
