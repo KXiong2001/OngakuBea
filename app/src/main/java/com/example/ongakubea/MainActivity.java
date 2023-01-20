@@ -17,12 +17,9 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        System.out.println("111111111");
         String accountName = getSharedPreferences("p1", Context.MODE_PRIVATE)
                 .getString(PREF_ACCOUNT_NAME, null);
-        System.out.println(accountName);
         boolean accountSelected = accountName != null;
-        System.out.println(accountName);
         new CountDownTimer(1000, 1000) {
             @Override
             public void onTick(long l) {

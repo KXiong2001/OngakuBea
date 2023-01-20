@@ -4,7 +4,6 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.content.Context;
 import android.os.Bundle;
-import android.text.TextUtils;
 
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
@@ -22,15 +21,8 @@ import com.google.api.services.youtube.YouTubeScopes;
 import com.google.api.services.youtube.model.Playlist;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.FutureTask;
 
 public class PlaylistActvity extends Activity {
     private static final String[] SCOPES = { YouTubeScopes.YOUTUBE_READONLY };
@@ -41,7 +33,7 @@ public class PlaylistActvity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_playlist);
+        setContentView(R.layout.activity_playlist_list);
         playlistView = findViewById(R.id.playlistRows);
         fetchPlaylists();
     }
@@ -63,7 +55,6 @@ public class PlaylistActvity extends Activity {
         return null;
     }
 
-
     private class ListPlaylists implements Runnable {
         private com.google.api.services.youtube.YouTube mService = null;
         static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
@@ -84,7 +75,7 @@ public class PlaylistActvity extends Activity {
         public void run() {
             List<Playlist> output = null;
             try {
-                output = getDataFromApi();
+                output = getPlaylists();
             } catch (Exception e) {
                 mLastError = e;
                 canceled();
@@ -126,15 +117,12 @@ public class PlaylistActvity extends Activity {
          * @return List of Strings containing information about the channel.
          * @throws IOException
          */
-        private List<Playlist> getDataFromApi() throws IOException {
+        private List<Playlist> getPlaylists() throws IOException {
             List<Playlist> pls = mService.playlists()
                     .list("snippet,contentDetails")
                     .setMine(true)
                     .execute()
                     .getItems();
-            for (Playlist pl : pls) {
-                System.out.println(pl.toString());
-            }
             return pls;
         }
 

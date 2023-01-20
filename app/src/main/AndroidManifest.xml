@@ -31,12 +31,9 @@
                 android:value="" />
         </activity>
 
-        <activity
-            android:name=".APIActivity"
-            android:screenOrientation="fullSensor" />
-
         <activity android:name=".LoginActivity" />
         <activity android:name=".PlaylistActvity" />
+        <activity android:name=".VideoListActivity"/>
 
     </application>
 

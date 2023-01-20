@@ -8,4 +8,5 @@
         android:layout_height="match_parent"
         android:padding="30dp"
         android:id="@+id/playlistRows"/>
+
 </RelativeLayout>
