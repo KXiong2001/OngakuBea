@@ -238,7 +238,7 @@ public class VideoListActivity extends Activity {
                 return;
             }
 
-            String videoId = musicVideos.get(0).getId();
+            String videoId = musicVideos.get((int)(Math.random() * musicVideos.size())).getId();
 
             List<SearchResult> results = mService.search()
                     .list("snippet")
@@ -248,7 +248,7 @@ public class VideoListActivity extends Activity {
                     .execute().getItems();
 
             for (SearchResult result : results) {
-                System.out.println(result.getSnippet().toString());
+                System.out.println(result.toString());
             }
         }
 
