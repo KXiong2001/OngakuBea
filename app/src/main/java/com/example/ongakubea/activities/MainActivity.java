@@ -1,12 +1,15 @@
 package com.example.ongakubea.activities;
 
 import android.app.Activity;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.os.CountDownTimer;
 
 import com.example.ongakubea.R;
+import com.example.ongakubea.utils.VideoItemsDbHelper;
 
 public class MainActivity extends Activity {
 
@@ -20,6 +23,7 @@ public class MainActivity extends Activity {
         String accountName = getSharedPreferences("p1", Context.MODE_PRIVATE)
                 .getString(PREF_ACCOUNT_NAME, null);
         boolean accountSelected = accountName != null;
+        initializeDatabase();
         new CountDownTimer(1000, 1000) {
             @Override
             public void onTick(long l) {
@@ -36,5 +40,9 @@ public class MainActivity extends Activity {
                 startActivity(loginPage);
             }
         }.start();
+    }
+
+    private void initializeDatabase() {
+        VideoItemsDbHelper dbHelper = new VideoItemsDbHelper(this);
     }
 }

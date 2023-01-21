@@ -2,8 +2,10 @@ package com.example.ongakubea.activities;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
@@ -14,6 +16,8 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.ongakubea.R;
 import com.example.ongakubea.adapters.VideoListAdapter;
+import com.example.ongakubea.models.VideoItemsContract;
+import com.example.ongakubea.utils.VideoItemsDbHelper;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
@@ -32,6 +36,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 public class VideoListActivity extends Activity {
     private static final String[] SCOPES = { YouTubeScopes.YOUTUBE_READONLY };
@@ -40,8 +46,10 @@ public class VideoListActivity extends Activity {
 
     private GoogleAccountCredential mCredential;
     private com.google.api.services.youtube.YouTube mService = null;
+
     private String playlistId;
     private List<Video> musicVideos;
+    BlockingQueue<List<Video>> blockingQueue;
 
     RecyclerView musicVideosList;
     Button suggestButton;
@@ -58,16 +66,20 @@ public class VideoListActivity extends Activity {
         setContentView(R.layout.activity_video_list);
 
         Intent intent = this.getIntent();
+
         String playlistId = intent.getStringExtra(PLAYLIST_ID_EXTRA_NAME);
         this.playlistId = playlistId;
         this.musicVideos = new ArrayList<>();
+        this.blockingQueue = new LinkedBlockingDeque<>(1);
 
         this.musicVideosList = findViewById(R.id.videosRecyclerView);
         this.suggestButton = findViewById(R.id.suggestButton);
 
         setCredentials();
         setButtonOnClick();
-        showMusicVideos();
+
+        new GetVideoList();
+        new InsertVideosToDatabase();
     }
 
     private void setCredentials() {
@@ -91,41 +103,23 @@ public class VideoListActivity extends Activity {
                 .build();
     }
     private void setButtonOnClick() {
-        this.suggestButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                if (VideoListActivity.this.musicVideos == null ||
-                        VideoListActivity.this.musicVideos.size() == 0) {
-                    String message = "There is no music videos in this playlist :(";
-                    Toast.makeText(VideoListActivity.this, message, Toast.LENGTH_SHORT).show();
-                    return;
-                }
-
-                new GetRecommendations();
+        this.suggestButton.setOnClickListener(view -> {
+            if (VideoListActivity.this.musicVideos == null ||
+                    VideoListActivity.this.musicVideos.size() == 0) {
+                String message = "There is no music videos in this playlist :(";
+                Toast.makeText(VideoListActivity.this, message, Toast.LENGTH_SHORT).show();
+                return;
             }
+
+            new GetRecommendations();
         });
     }
-    private void showMusicVideos() {
-        GoogleAccountCredential mCredential = GoogleAccountCredential.usingOAuth2(
-                        getApplicationContext(), Arrays.asList(SCOPES))
-                .setBackOff(new ExponentialBackOff());
 
-        String accountName = getSharedPreferences("p1", Context.MODE_PRIVATE)
-                .getString(PREF_ACCOUNT_NAME, null);
-        if (accountName == null) {
-            return;
-        }
-
-        mCredential.setSelectedAccountName(accountName);
-        new GetPlaylistItemDetails();
-    }
-
-    private class GetPlaylistItemDetails implements Runnable {
+    private class GetVideoList implements Runnable {
         static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
         private Exception mLastError = null;
 
-        GetPlaylistItemDetails() {
-
+        GetVideoList() {
             new Thread(this, "getPlaylistDetails").start();
         }
 
@@ -133,6 +127,7 @@ public class VideoListActivity extends Activity {
         public void run() {
             try {
                 fetchMusicVideos();
+                blockingQueue.put(musicVideos);
             } catch (Exception e) {
                 mLastError = e;
                 System.out.println(e.getMessage());
@@ -283,5 +278,74 @@ public class VideoListActivity extends Activity {
             dialog.show();
         }
 
+    }
+
+    private class InsertVideosToDatabase implements Runnable {
+        private SQLiteDatabase sqLiteDatabase;
+        private List<Video> videos;
+
+        InsertVideosToDatabase() {
+            VideoItemsDbHelper dbHelper = new VideoItemsDbHelper(VideoListActivity.this);
+            sqLiteDatabase = dbHelper.getWritableDatabase();
+
+            new Thread(this, "InsertVideosToDatabase").start();;
+
+        }
+
+        @Override
+        public void run() {
+            try {
+                System.out.println("Attempting to read video");
+                if (musicVideos != null && musicVideos.size() != 0) {
+                    videos = musicVideos;
+                } else {
+                    videos = blockingQueue.take();
+                }
+            } catch (InterruptedException e) {
+                System.out.println(e.getMessage());
+                return;
+            }
+
+            for (Video video : videos) {
+                insertVideo(video);
+            }
+        }
+
+        private void insertVideo(Video video) {
+            // Create a new map of values, where column names are the keys
+            System.out.println(String.format("Video id / name: %s | %s \n playlist: %s",
+                    video.getId(), video.getSnippet().getTitle(), playlistId));
+            ContentValues values = new ContentValues();
+
+            values.put(VideoItemsContract.VideoItems.VIDEO_ID, video.getId());
+            values.put(VideoItemsContract.VideoItems.VIDEO_TITLE, video.getSnippet().getTitle());
+
+            long newRowId = sqLiteDatabase.insertWithOnConflict(
+                    VideoItemsContract.VideoItems.TABLE_NAME,
+                    null,
+                    values,
+                    SQLiteDatabase.CONFLICT_IGNORE);
+
+            if (newRowId == -1) {
+                System.out.println("Error for inserting video!");
+            }
+
+            // TODO: error handling
+
+            values = new ContentValues();
+            values.put(VideoItemsContract.VideoPlaylistMappings.PLAYLIST_ID, playlistId);
+            values.put(VideoItemsContract.VideoPlaylistMappings.VIDEO_ID, video.getId());
+            newRowId = sqLiteDatabase.insertWithOnConflict(
+                    VideoItemsContract.VideoPlaylistMappings.TABLE_NAME,
+                    null,
+                    values,
+                    SQLiteDatabase.CONFLICT_IGNORE);
+
+            if (newRowId == -1) {
+                System.out.println("Error for inserting mapping!");
+                return;
+            }
+
+        }
     }
 }
