@@ -5,9 +5,9 @@ import android.app.Dialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.Intent;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
-import android.view.View;
 import android.widget.Button;
 import android.widget.Toast;
 
@@ -27,10 +27,16 @@ import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
+import com.google.api.services.youtube.YouTube;
 import com.google.api.services.youtube.YouTubeScopes;
+import com.google.api.services.youtube.model.Playlist;
 import com.google.api.services.youtube.model.PlaylistItem;
+import com.google.api.services.youtube.model.PlaylistSnippet;
+import com.google.api.services.youtube.model.PlaylistStatus;
+import com.google.api.services.youtube.model.SearchListResponse;
 import com.google.api.services.youtube.model.SearchResult;
 import com.google.api.services.youtube.model.Video;
+import com.google.api.services.youtube.model.VideoListResponse;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -44,7 +50,6 @@ public class VideoListActivity extends Activity {
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String PLAYLIST_ID_EXTRA_NAME = "playlistId";
 
-    private GoogleAccountCredential mCredential;
     private com.google.api.services.youtube.YouTube mService = null;
 
     private String playlistId;
@@ -67,8 +72,7 @@ public class VideoListActivity extends Activity {
 
         Intent intent = this.getIntent();
 
-        String playlistId = intent.getStringExtra(PLAYLIST_ID_EXTRA_NAME);
-        this.playlistId = playlistId;
+        this.playlistId = intent.getStringExtra(PLAYLIST_ID_EXTRA_NAME);
         this.musicVideos = new ArrayList<>();
         this.blockingQueue = new LinkedBlockingDeque<>(1);
 
@@ -83,7 +87,7 @@ public class VideoListActivity extends Activity {
     }
 
     private void setCredentials() {
-         mCredential = GoogleAccountCredential.usingOAuth2(
+        GoogleAccountCredential mCredential = GoogleAccountCredential.usingOAuth2(
                         getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
 
@@ -166,13 +170,10 @@ public class VideoListActivity extends Activity {
         }
 
         private void displayMusicVideos() {
-            VideoListActivity.this.runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    VideoListAdapter playlistAdapter = new VideoListAdapter(musicVideos);
-                    musicVideosList.setAdapter(playlistAdapter);
-                    musicVideosList.setLayoutManager(new LinearLayoutManager(VideoListActivity.this));
-                }
+            VideoListActivity.this.runOnUiThread(() -> {
+                VideoListAdapter playlistAdapter = new VideoListAdapter(musicVideos);
+                musicVideosList.setAdapter(playlistAdapter);
+                musicVideosList.setLayoutManager(new LinearLayoutManager(VideoListActivity.this));
             });
         }
 
@@ -212,7 +213,12 @@ public class VideoListActivity extends Activity {
         static final int REQUEST_GOOGLE_PLAY_SERVICES = 1002;
         private Exception mLastError = null;
 
+        private SQLiteDatabase sqLiteDatabase;
+
         GetRecommendations() {
+            VideoItemsDbHelper dbHelper = new VideoItemsDbHelper(VideoListActivity.this);
+            sqLiteDatabase = dbHelper.getWritableDatabase();
+
             new Thread(this, "getRecommendations").start();
         }
 
@@ -235,18 +241,116 @@ public class VideoListActivity extends Activity {
                 return;
             }
 
-            String videoId = musicVideos.get((int)(Math.random() * musicVideos.size())).getId();
+//            for (int i = 0; i < 3; i++) {
+//                String videoId = musicVideos.get((int)(Math.random() * musicVideos.size())).getId();
+//                SearchListResponse results = mService.search()
+//                        .list("snippet")
+//                        .setRelatedToVideoId(videoId)
+//                        .setType("video")
+//                        .setMaxResults(50L)
+//                        .execute();
+//                insertSearchResults(results);
+//            }
+//
+            List<String> recommendedVideoIds = fetchRandomVideosFromDatabase();
+            System.out.println(recommendedVideoIds);
+            String recommendedVideoIdsStr = String.join(", ", recommendedVideoIds);
+            recommendedVideoIdsStr = recommendedVideoIdsStr.replace(" ", "");
 
-            List<SearchResult> results = mService.search()
-                    .list("snippet")
-                    .setRelatedToVideoId(videoId)
-                    .setType("video")
-                    .setMaxResults(50L)
-                    .execute().getItems();
+            System.out.println(recommendedVideoIdsStr);
+            VideoListResponse recommendedVideos = mService.videos()
+                    .list("snippet,contentDetails")
+                    .setId(recommendedVideoIdsStr)
+                    .execute();
 
-            for (SearchResult result : results) {
-                System.out.println(result.toString());
+            System.out.println(recommendedVideos.toPrettyString());;
+
+
+        }
+
+        private void insertSearchResults(SearchListResponse response) {
+            String allVideoIds = "";
+            for(SearchResult sr : response.getItems()) {
+                allVideoIds += sr.getId().getVideoId() + ",";
             }
+            allVideoIds = allVideoIds.substring(0, allVideoIds.length() - 2);
+
+            List<Video> videos;
+            try {
+                videos = mService.videos()
+                        .list("snippet,contentDetails")
+                        .setId(allVideoIds)
+                        .execute()
+                        .getItems();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            for (Video video : videos) {
+                if (!video.getSnippet().getCategoryId().equals("10")) {
+                    continue;
+                }
+
+                System.out.println("Inserting video " + video.getSnippet().getTitle());
+                insertRecommendedVideoToDatabase(video);
+            }
+        }
+
+        private void insertRecommendedVideoToDatabase(Video video) {
+            ContentValues values = new ContentValues();
+
+            values.put(VideoItemsContract.VideoItems.VIDEO_ID, video.getId());
+            values.put(VideoItemsContract.VideoItems.VIDEO_TITLE, video.getSnippet().getTitle());
+            values.put(VideoItemsContract.VideoItems.PLAYLIST_SUGGESTED_FROM, playlistId);
+            values.put(VideoItemsContract.VideoItems.SUGGESTED, false);
+
+            long newRowId = sqLiteDatabase.insertWithOnConflict(
+                    VideoItemsContract.VideoItems.TABLE_NAME,
+                    null,
+                    values,
+                    SQLiteDatabase.CONFLICT_IGNORE);
+
+            if (newRowId == -1) {
+                System.out.println("Error for inserting recommended video!");
+            }
+        }
+
+
+        private List<String> fetchRandomVideosFromDatabase() {
+
+            Cursor cursor = sqLiteDatabase.query(
+                    VideoItemsContract.VideoItems.TABLE_NAME + " Order BY RANDOM() LIMIT 20",
+                    new String[] { "*" }, null, null, null, null, null
+            );
+
+            List<String> videoIds = new ArrayList<>();
+            while(cursor.moveToNext()) {
+                String videoId = cursor.getString(
+                        cursor.getColumnIndexOrThrow(VideoItemsContract.VideoItems.VIDEO_ID));
+                videoIds.add(videoId);
+            }
+
+            return videoIds;
+        }
+
+        private void createNewPlaylist() throws IOException {
+            Playlist playlist = new Playlist();
+
+            PlaylistSnippet snippet = new PlaylistSnippet();
+            snippet.setDescription("This is a sample playlist description.");
+            snippet.setTitle("Sample playlist created via API");
+            playlist.setSnippet(snippet);
+
+            // Add the status object property to the Playlist object.
+            PlaylistStatus status = new PlaylistStatus();
+            status.setPrivacyStatus("private");
+            playlist.setStatus(status);
+
+            // Define and execute the API request
+            YouTube.Playlists.Insert request = mService.playlists()
+                    .insert("snippet,status", playlist);
+            Playlist response = request.execute();
+            System.out.println(response);
         }
 
         private void canceled() {
@@ -295,7 +399,6 @@ public class VideoListActivity extends Activity {
         @Override
         public void run() {
             try {
-                System.out.println("Attempting to read video");
                 if (musicVideos != null && musicVideos.size() != 0) {
                     videos = musicVideos;
                 } else {
@@ -313,8 +416,7 @@ public class VideoListActivity extends Activity {
 
         private void insertVideo(Video video) {
             // Create a new map of values, where column names are the keys
-            System.out.println(String.format("Video id / name: %s | %s \n playlist: %s",
-                    video.getId(), video.getSnippet().getTitle(), playlistId));
+
             ContentValues values = new ContentValues();
 
             values.put(VideoItemsContract.VideoItems.VIDEO_ID, video.getId());

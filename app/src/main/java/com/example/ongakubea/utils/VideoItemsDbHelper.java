@@ -1,7 +1,6 @@
 package com.example.ongakubea.utils;
 
 import android.content.Context;
-import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.database.sqlite.SQLiteOpenHelper;
 
@@ -24,18 +23,24 @@ public class VideoItemsDbHelper extends SQLiteOpenHelper {
 
     private void createTables(SQLiteDatabase sqLiteDatabase) {
         String createVideoItemTable = String.format(
-                "CREATE TABLE IF NOT EXISTS %s (%s TEXT PRIMARY KEY,%s TEXT)",
+                "CREATE TABLE IF NOT EXISTS %s (%s TEXT PRIMARY KEY,%s TEXT,%s TEXT,%s BOOLEAN)",
                 VideoItemsContract.VideoItems.TABLE_NAME,
                 VideoItemsContract.VideoItems.VIDEO_ID,
-                VideoItemsContract.VideoItems.VIDEO_TITLE);
+                VideoItemsContract.VideoItems.VIDEO_TITLE,
+                VideoItemsContract.VideoItems.PLAYLIST_SUGGESTED_FROM,
+                VideoItemsContract.VideoItems.SUGGESTED);
+
+        System.out.println(createVideoItemTable);
         sqLiteDatabase.execSQL(createVideoItemTable);
 
         String createVideoPlaylistMappingTable = String.format(
-                "CREATE TABLE IF NOT EXISTS %s (%s INTEGER PRIMARY KEY AUTOINCREMENT,%s TEXT,%s TEXT)",
+                "CREATE TABLE IF NOT EXISTS %s (%s TEXT,%s TEXT,PRIMARY KEY (%s, %s))",
                 VideoItemsContract.VideoPlaylistMappings.TABLE_NAME,
-                VideoItemsContract.VideoPlaylistMappings.MAPPING_ID,
+                VideoItemsContract.VideoPlaylistMappings.VIDEO_ID,
+                VideoItemsContract.VideoPlaylistMappings.PLAYLIST_ID,
                 VideoItemsContract.VideoPlaylistMappings.VIDEO_ID,
                 VideoItemsContract.VideoPlaylistMappings.PLAYLIST_ID);
+
         sqLiteDatabase.execSQL(createVideoPlaylistMappingTable);
     }
 
@@ -53,9 +58,6 @@ public class VideoItemsDbHelper extends SQLiteOpenHelper {
                 VideoItemsContract.VideoPlaylistMappings.TABLE_NAME,
                 VideoItemsContract.VideoPlaylistMappings.PLAYLIST_ID );
         sqLiteDatabase.execSQL(videoPlaylistMappingTableIndex);
-
-        System.out.println(videoItemTableIndex);
-        System.out.println(videoPlaylistMappingTableIndex);
     }
 
     @Override
@@ -65,9 +67,6 @@ public class VideoItemsDbHelper extends SQLiteOpenHelper {
 
         String VideoPlaylistMappingEntries = "DROP TABLE IF EXISTS " + VideoItemsContract.VideoItems.TABLE_NAME;
         sqLiteDatabase.execSQL(VideoPlaylistMappingEntries);
-
-        System.out.println(VideoItemsEntries);
-        System.out.println(VideoPlaylistMappingEntries);
 
         onCreate(sqLiteDatabase);
     }
